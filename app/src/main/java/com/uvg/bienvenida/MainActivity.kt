@@ -66,19 +66,10 @@ fun WelcomeScreen() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Tu puente hacia la comunidad sorda de Guatemala.",
-            textAlign = TextAlign.Center
+            text = "Tu puente hacia la comunidad sorda de Guatemala."
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Image(
-            painter = painterResource(id = R.drawable.que),
-            contentDescription = "Mascota HandsOn",
-            modifier = Modifier.size(250.dp)
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(300.dp))
 
         Button(
             onClick = { },
