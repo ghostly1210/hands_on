@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -17,10 +18,19 @@ import com.uvg.bienvenida.ui.theme.HandsonTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.unit.dp
 
 
@@ -77,6 +87,32 @@ fun WelcomeScreen() {
         ) {
             Text("¡Echa un vistazo!")
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        val annotatedString = buildAnnotatedString {
+            append("¿No tienes cuenta? ")
+            pushStringAnnotation(tag = "signup", annotation = "signup")
+            withStyle(
+                style = SpanStyle(
+                    color = Color.Blue,
+                    textDecoration = TextDecoration.Underline
+                )
+            ) {
+                append("Regístrate")
+            }
+            pop()
+        }
+
+        ClickableText(
+            text = annotatedString,
+            onClick = { offset ->
+                annotatedString.getStringAnnotations(tag = "signup", start = offset, end = offset)
+                    .firstOrNull()?.let {
+                        // Logica para futura pantalla
+                    }
+            }
+        )
     }
 }
 
