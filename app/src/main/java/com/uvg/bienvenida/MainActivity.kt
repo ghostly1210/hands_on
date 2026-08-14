@@ -320,6 +320,7 @@ fun LessonNode(
             style = MaterialTheme.typography.bodyMedium,
             color = if (lesson.status == LessonStatus.LOCKED) LockedIconGray else Color(0xFF212121)
         )
+
     }
 }
 
