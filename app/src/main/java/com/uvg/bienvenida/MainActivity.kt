@@ -15,21 +15,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.ColorPainter
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -102,7 +96,7 @@ fun WelcomeScreen() {
         )
         Spacer(modifier = Modifier.height(24.dp))
         Image(
-            painter = painterResource(id = R.drawable.que),
+            painter = painterResource(id = R.drawable.logoQuetzal),
             contentDescription = "Mascota HandsOn",
             modifier = Modifier.size(250.dp)
         )
@@ -119,7 +113,7 @@ fun WelcomeScreen() {
         Button(
             onClick = { }
         ) {
-            Text("¡Echa un vistazo!")
+            Text(stringResource(R.string.echa_un_vistazo))
         }
         Spacer(modifier = Modifier.height(24.dp))
         val annotatedString = buildAnnotatedString {
@@ -184,19 +178,25 @@ fun LessonsScreen(
                 NavigationBarItem(
                     selected = false,
                     onClick = {},
-                    icon = { Box(modifier = Modifier.size(24.dp).background(Color.Gray)) },
+                    icon = { Box(modifier = Modifier
+                        .size(24.dp)
+                        .background(Color.Gray)) },
                     label = { Text("Inicio") }
                 )
                 NavigationBarItem(
                     selected = true,
                     onClick = {},
-                    icon = { Box(modifier = Modifier.size(24.dp).background(CurrentTeal)) },
+                    icon = { Box(modifier = Modifier
+                        .size(24.dp)
+                        .background(CurrentTeal)) },
                     label = { Text("Mapa") }
                 )
                 NavigationBarItem(
                     selected = false,
                     onClick = {},
-                    icon = { Box(modifier = Modifier.size(24.dp).background(Color.Gray)) },
+                    icon = { Box(modifier = Modifier
+                        .size(24.dp)
+                        .background(Color.Gray)) },
                     label = { Text("Perfil") }
                 )
             }
@@ -297,7 +297,9 @@ fun LessonNode(
                     contentAlignment = Alignment.Center
                 ) {
                     // Placeholder para el icono
-                    Box(modifier = Modifier.size(24.dp).background(Color.White.copy(alpha = 0.5f)))
+                    Box(modifier = Modifier
+                        .size(24.dp)
+                        .background(Color.White.copy(alpha = 0.5f)))
                 }
             }
             if (lesson.status == LessonStatus.CURRENT) {
@@ -361,18 +363,20 @@ fun NextStopCard(
                 )
             }
             // Icono de candado placeholder
-            Box(modifier = Modifier.size(20.dp).background(Color.Gray.copy(alpha = 0.5f)))
+            Box(modifier = Modifier
+                .size(20.dp)
+                .background(Color.Gray.copy(alpha = 0.5f)))
         }
     }
 }
 
-//@Preview(showBackground = true)
-//@Composable
-//fun WelcomeScreenPreview() {
-//    HandsonTheme {
-//        WelcomeScreen()
-//    }
-//}
+@Preview(showBackground = true)
+@Composable
+fun WelcomeScreenPreview() {
+    HandsonTheme {
+        WelcomeScreen()
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
