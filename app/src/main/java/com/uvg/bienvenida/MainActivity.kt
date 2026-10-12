@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             HandsonTheme {
-                LessonsScreen()
+                HandsOnApp()
             }
         }
     }
@@ -96,7 +96,7 @@ fun WelcomeScreen() {
         )
         Spacer(modifier = Modifier.height(24.dp))
         Image(
-            painter = painterResource(id = R.drawable.logoQuetzal),
+            painter = painterResource(id = R.drawable.logo_quetzal),
             contentDescription = "Mascota HandsOn",
             modifier = Modifier.size(250.dp)
         )
@@ -172,34 +172,6 @@ fun LessonsScreen(
                     }
                 }
             )
-        },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = false,
-                    onClick = {},
-                    icon = { Box(modifier = Modifier
-                        .size(24.dp)
-                        .background(Color.Gray)) },
-                    label = { Text("Inicio") }
-                )
-                NavigationBarItem(
-                    selected = true,
-                    onClick = {},
-                    icon = { Box(modifier = Modifier
-                        .size(24.dp)
-                        .background(CurrentTeal)) },
-                    label = { Text("Mapa") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = {},
-                    icon = { Box(modifier = Modifier
-                        .size(24.dp)
-                        .background(Color.Gray)) },
-                    label = { Text("Perfil") }
-                )
-            }
         }
     ) { innerPadding ->
         Column(
