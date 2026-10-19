@@ -1,0 +1,30 @@
+HANDSON - COPIA INTEGRADA
+
+Abrir esta carpeta como proyecto en Android Studio.
+
+Procedencia:
+- Desktop/hands On/hands_on-main: pantalla de nivel básico y catálogo de palabras.
+- Desktop/Plataformas/handson/hands_on_actualizado: reto diario, reproductor y res/raw/reto_diario.mp4.
+- El proyecto antiguo de Desktop/Plataformas/hands_on-main no se usó como base debido a sus conflictos y componentes vacíos.
+
+Flujo integrado:
+Lecciones > Nivel Básico > palabra > video o aviso de video pendiente.
+Desafío > reto diario con el video local y puntos guardados en el dispositivo.
+El botón Atrás regresa al nivel anterior. La selección se conserva al recrear la actividad.
+
+Contenido disponible:
+Solo se encontró un video: reto_diario.mp4 (849995 bytes).
+Se vinculó a ¿Cuál es tu nombre? según la respuesta configurada en el reto original.
+No se ha verificado lingüísticamente el contenido del video.
+Mamá, Letras (A - U), Gracias y Colegio conservan su lugar en el catálogo, con aviso de video pendiente.
+No se simula progreso de lecciones. Los puntos del reto conservan el almacenamiento original.
+
+Para agregar más videos:
+1. Colocar cada archivo MP4 en app/src/main/res/raw con nombre en minúsculas y guiones bajos.
+2. Asignar videoResId = R.raw.nombre_del_archivo al VideoItem correspondiente en VideosScreen.kt.
+3. Compilar y comprobar la reproducción en un dispositivo Android.
+
+Las tres carpetas originales no se modificaron. Esta carpeta es un proyecto independiente; no contiene su historial Git ni sus cachés de compilación originales.
+Validación: assembleDebug y testDebugUnitTest completados correctamente el 17 de octubre de 2026. La prueba unitaria existente es la básica de plantilla; no valida navegación ni reproducción. No había un dispositivo o emulador conectado para la prueba visual.
+
+18 de octubre de 2026: bienvenida inicial con el recurso logo_quetzal.jpeg existente; Empezar abre acceso, Echa un vistazo entra como invitado. Formularios de acceso y registro sin backend, con aviso explícito y sin almacenamiento de contraseñas. Tema claro/oscuro automático del sistema con paleta HandsOn, incluidos catálogo y reto. El quetzal disponible es un JPEG de fondo claro, diferente al personaje del mockup adjunto.

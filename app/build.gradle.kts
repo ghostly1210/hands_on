@@ -1,11 +1,16 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+
+
 }
 
 android {
     namespace = "com.uvg.bienvenida"
     compileSdk = 37
+    buildFeatures {
+        compose = true
+    }
 
     defaultConfig {
         applicationId = "com.uvg.bienvenida"
@@ -44,6 +49,7 @@ android {
         implementation(libs.androidx.core.ktx)
         implementation(libs.androidx.lifecycle.runtime.ktx)
         implementation(libs.coil.compose)
+        implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
         testImplementation(libs.junit)
         androidTestImplementation(platform(libs.androidx.compose.bom))
         androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -51,4 +57,6 @@ android {
         androidTestImplementation(libs.androidx.junit)
         debugImplementation(libs.androidx.compose.ui.test.manifest)
         debugImplementation(libs.androidx.compose.ui.tooling)
+
+
     }
