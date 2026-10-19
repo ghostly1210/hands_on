@@ -29,13 +29,12 @@ data class VideoItem(
 
 // Tu lista con los nombres que querías
 val listaVideosPrueba = listOf(
-    VideoItem("1", "01. Mamá"),
-    VideoItem("2", "02. Letras (A - U)"),
-    VideoItem("3", "03. Gracias"),
-    VideoItem("4", "04. Colegio"),
-    VideoItem("5", "05. ¿Cuál es tu nombre?", videoResId = com.uvg.bienvenida.R.raw.reto_diario)
+    VideoItem("1", "01. Mamá", videoResId = com.uvg.bienvenida.R.raw.mama),
+    VideoItem("2", "02. Letras (A - U)"), // Este se queda pendiente por ahora
+    VideoItem("3", "03. Gracias", videoResId = com.uvg.bienvenida.R.raw.gracias),
+    VideoItem("4", "04. Colegio", videoResId = com.uvg.bienvenida.R.raw.colegio),
+    VideoItem("5", "05. ¿Cuál es tu nombre?", videoResId = com.uvg.bienvenida.R.raw.cual_es_tu_nombre)
 )
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideosScreen(
