@@ -52,7 +52,6 @@ fun MainAppRoute() {
             else -> entrada = "bienvenida"
         }
     }
-
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
@@ -69,7 +68,6 @@ fun MainAppRoute() {
                 camaraAbierta && video != null -> CameraScreen(
                     tituloLeccion = video.titulo,
                     onBack = { camaraAbierta = false }
-                    // Conectar aquí onFrame cuando esté disponible el analizador.
                 )
                 tab == "reto" -> RetoDiarioScreen()
                 video != null -> Scaffold(topBar = {
