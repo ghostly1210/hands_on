@@ -1,0 +1,691 @@
+diff --git a/CAMARA.md b/CAMARA.md
+new file mode 100644
+--- /dev/null
++++ b/CAMARA.md
+@@ -0,0 +1,172 @@
++# Cámara de HandsOn
++
++La integración está hecha sobre el ZIP que compartiste. Es una implementación
++de cámara en vivo para Android con Kotlin, Jetpack Compose y CameraX 1.6.2.
++No incluye reconocimiento de manos, validación de señas ni premios por practicar.
++
++## Abrir y probar
++
++1. Descomprime el ZIP en una carpeta nueva y abre `hands_on-main` con Android Studio.
++2. Deja que Gradle sincronice las dependencias. Conservamos la configuración
++   original: compileSdk/targetSdk 37, AGP 9.4.1, Gradle 9.6.1 y el daemon JDK 21.
++   Android Studio debe tener los componentes que ese proyecto solicita.
++3. Ejecuta la app en un teléfono Android (Android 8/API 26 o posterior).
++   Un emulador necesita tener una cámara configurada; es preferible un teléfono.
++4. Entra como invitado o usa el flujo de acceso existente.
++5. Abre **Lecciones → Nivel Básico → una palabra → Practicar con cámara**.
++6. Pulsa **Permitir cámara** y acepta la solicitud del sistema. Debe aparecer
++   la vista frontal y el texto **Cámara lista**. Si solo hay cámara trasera,
++   se usa esa automáticamente. **Cambiar cámara** se habilita cuando hay ambas.
++
++Esta pantalla no graba videos, no guarda fotos, no usa el micrófono y no envía
++imágenes a un servidor. Solo declara el permiso CAMERA. Las imágenes de análisis
++se preparan en memoria cuando se conecta un consumidor `onFrame`.
++
++## Archivos de tu parte
++
++| Archivo | Cambio |
++| --- | --- |
++| `gradle/libs.versions.toml` | Versiones y alias de CameraX y Lifecycle Compose. |
++| `app/build.gradle.kts` | Dependencias para cámara, vista previa y ciclo de vida. |
++| `app/src/main/AndroidManifest.xml` | Permiso CAMERA; la cámara es opcional para instalar la app. |
++| `app/src/main/java/com/uvg/bienvenida/MainActivity.kt` | Botón, navegación hacia la cámara y regreso a la lección. |
++| `app/src/main/java/com/uvg/bienvenida/ui/camara/CameraScreen.kt` | Interfaz, permisos, configuración, cambio de cámara y reintento. |
++| `app/src/main/java/com/uvg/bienvenida/ui/camara/CameraPreview.kt` | Preview, sesión de CameraX, orientación y entrega de imágenes. |
++| `app/src/main/java/com/uvg/bienvenida/ui/camara/CameraFrame.kt` | Contrato de datos para tu compañera. |
++
++La sesión se vincula al ciclo de vida. Al salir de la pantalla, cambiar de
++pestaña o mandar la app al fondo, se retiran sus casos de uso y su analizador.
++Una inicialización que termine después de salir no puede volver a abrirla.
++Al regresar del fondo se revisa el permiso de nuevo.
++
++El video de la lección sale de la composición al abrir la cámara, por lo que
++su reproductor existente se detiene. El botón y la nueva pantalla permiten
++desplazamiento para acceder a los controles en pantallas pequeñas u horizontales.
++
++## Conexión para tu compañera
++
++El lugar de conexión está en la llamada a `CameraScreen` dentro de `MainActivity.kt`.
++La firma del parámetro es `onFrame: ((CameraFrame) -> Unit)?`; por defecto es `null`.
++Conecta ahí el analizador real cuando esté listo. Este ejemplo **solo registra
++metadatos** para comprobar la entrega; no detecta manos:
++
++```kotlin
++CameraScreen(
++    tituloLeccion = video.titulo,
++    onBack = { camaraAbierta = false },
++    onFrame = { frame ->
++        android.util.Log.d(
++            "HandsOnFrame",
++            "${frame.bitmap.width}x${frame.bitmap.height}, " +
++                "giro=${frame.rotationDegrees}, frontal=${frame.isFrontCamera}, " +
++                "tiempo=${frame.timestampMillis}"
++        )
++    }
++)
++```
++
++En Logcat filtra por `HandsOnFrame` para comprobar que llegan imágenes de la cámara.
++Si quieres una prueba del canal de errores, reemplaza temporalmente ese log por
++`error("Prueba del consumidor")`: debe aparecer el aviso y permitir reintentar.
++Retira ese código al terminar la prueba.
++
++### Contrato del frame
++
++| Campo | Significado |
++| --- | --- |
++| `bitmap` | Bitmap ARGB_8888 sin rotación aplicada ni espejo; solo válido durante el callback. |
++| `rotationDegrees` | Giro horario de 0, 90, 180 o 270 grados necesario para orientar la imagen. |
++| `timestampMillis` | Reloj monotónico en milisegundos desde el arranque, no fecha/hora. |
++| `isFrontCamera` | Si procede de la cámara frontal. |
++
++La resolución solicitada es 640 × 480, con alternativa según el hardware. Usa
++el ancho y alto reales del bitmap, sin asumir un tamaño fijo. Se entregan hasta
++10 imágenes por segundo. El procesamiento es secuencial en un hilo de fondo;
++si tarda más, CameraX conserva la imagen más reciente y descarta las anteriores.
++
++**Vida de la imagen:** `onFrame` debe consumirla de manera síncrona. Al retornar,
++la cámara recicla el bitmap y cierra siempre el `ImageProxy`, incluso si ocurre
++una excepción. Si usa una API asíncrona, tu compañera debe copiar el bitmap antes
++de retornar, limitar el número de imágenes en curso y liberar cada copia al
++completarse su análisis. No pasar directamente el bitmap prestado a `detectAsync`.
++La cámara se encarga de cerrar el `ImageProxy`; el consumidor no recibe ese objeto.
++
++**Orientación y espejo:** la vista frontal es espejo para facilitar la práctica;
++las imágenes de análisis no se reflejan. El futuro detector debe aplicar el
++giro una sola vez (o pasarlo como opción de procesamiento). Si después dibujan
++puntos sobre la vista previa, tendrán que transformar sus coordenadas según
++rotación, escala, bandas y espejo; esta integración todavía no dibuja puntos.
++
++**Resultados:** este contrato entrega imágenes; tu compañera debe publicar sus
++resultados mediante un ViewModel/StateFlow o volver al hilo principal para
++actualizar la interfaz. No debe modificar Views desde `onFrame`. Un análisis
++ya iniciado puede terminar después de salir: el consumidor debe descartar
++resultados de sesiones anteriores y liberar sus propios recursos/modelos.
++
++## Incorporarlo a su repositorio de trabajo
++
++El ZIP no contiene historial Git y no se han publicado cambios en GitHub.
++Incluye `CAMARA.patch`, con los cambios respecto del ZIP original.
++
++Si tu copia local todavía coincide con el ZIP, crea una rama para tu trabajo,
++copia `CAMARA.patch` a la raíz de tu repositorio y ejecuta desde esa raíz:
++
++```bash
++git switch -c camara
++git apply --check CAMARA.patch
++git apply CAMARA.patch
++```
++
++Si la comprobación reporta conflictos por cambios de tus compañeras, combina
++los archivos de la tabla manualmente. No reemplaces todo su proyecto actual
++por esta copia. El parche es una alternativa para incorporar los cambios al
++repositorio original: **no lo apliques dentro de este ZIP, donde ya están hechos**.
++
++## Validación y pruebas pendientes
++
++Se revisaron las dependencias, el manifiesto, las rutas, la liberación de
++recursos y los cambios respecto del ZIP original. La revisión estructural no
++sustituye la compilación ni la prueba en un teléfono.
++
++Se intentó ejecutar `:app:assembleDebug :app:testDebugUnitTest`; el entorno no
++pudo descargar la distribución de Gradle por una restricción de red. No se
++completaron la compilación, las pruebas unitarias ni una prueba en dispositivo.
++No se generó un APK. El registro antiguo de `INTEGRACION.txt` describe una
++validación anterior y no valida estos cambios nuevos.
++
++Ejecuta en Android Studio o en la terminal del proyecto:
++
++```bash
++# macOS/Linux
++./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
++
++# PowerShell/Windows
++.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
++```
++
++Si Linux no permite ejecutar el wrapper, usa `bash gradlew` o `chmod +x gradlew`.
++Las pruebas unitarias que trae el proyecto son de plantilla: no verifican la cámara.
++
++| Prueba manual | Resultado esperado |
++| --- | --- |
++| Entrar por primera vez | Explicación y botón para pedir permiso; el resto de la app sigue accesible. |
++| Denegar el permiso | Aviso, opción de volver a solicitar y acceso a Configuración. |
++| Denegar repetidamente | Configuración permite habilitar el permiso cuando Android ya no pregunta. |
++| Dar permiso desde Configuración | Al volver aparece la cámara sin reiniciar la app. |
++| Girar a vertical, horizontal y 180° | Vista orientada; metadatos de rotación se actualizan. |
++| Cambiar de cámara varias veces | Cambia la imagen y la etiqueta sin acumular sesiones. |
++| Dispositivo con una sola cámara | Se usa la disponible; cambiar cámara queda deshabilitado. |
++| Volver a la lección o ir a Desafío | Se cierra la cámara y se conserva la navegación previa. |
++| Inicio/bloquear y luego regresar | El uso de cámara se detiene y se abre de nuevo al volver. |
++| Revocar permiso fuera de la app | Al volver se pide habilitarlo otra vez, sin bloquear las lecciones. |
++| Volver rápidamente mientras abre | No se abre una cámara en una pantalla que ya se abandonó. |
++| Cámara ocupada o sin cámara | Aparece un error recuperable; se puede volver o reintentar. |
++| Conectar el callback de Logcat | Imágenes con tamaños reales, giro y tiempo; sin imágenes guardadas. |
++| Callback que arroja una excepción | Aviso recuperable, sin dejar imágenes abiertas ni congelar el preview. |
++
++## Referencias técnicas
++
++- [CameraX: versiones](https://developer.android.com/jetpack/androidx/releases/camera)
++- [CameraX: análisis de imágenes](https://developer.android.com/media/camera/camerax/analyze)
++- [ImageProxy y conversión a Bitmap](https://developer.android.com/reference/androidx/camera/core/ImageProxy)
++- [Permisos en tiempo de ejecución](https://developer.android.com/training/permissions/requesting)
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -48,6 +48,11 @@
+         implementation(libs.androidx.compose.ui.tooling.preview)
+         implementation(libs.androidx.core.ktx)
+         implementation(libs.androidx.lifecycle.runtime.ktx)
++        implementation(libs.androidx.lifecycle.runtime.compose)
++        implementation(libs.androidx.camera.core)
++        implementation(libs.androidx.camera.camera2)
++        implementation(libs.androidx.camera.lifecycle)
++        implementation(libs.androidx.camera.view)
+         implementation(libs.coil.compose)
+         implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
+         testImplementation(libs.junit)
+@@ -59,4 +64,4 @@
+         debugImplementation(libs.androidx.compose.ui.tooling)
+ 
+ 
+-    }
+\ No newline at end of file
++    }
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -1,6 +1,11 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
++
++    <uses-permission android:name="android.permission.CAMERA" />
++    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
++    <uses-feature android:name="android.hardware.camera" android:required="false" />
++    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+ 
+     <application
+         android:allowBackup="true"
+@@ -25,4 +30,4 @@
+         </activity>
+     </application>
+ 
+-</manifest>
+\ No newline at end of file
++</manifest>
+diff --git a/app/src/main/java/com/uvg/bienvenida/MainActivity.kt b/app/src/main/java/com/uvg/bienvenida/MainActivity.kt
+--- a/app/src/main/java/com/uvg/bienvenida/MainActivity.kt
++++ b/app/src/main/java/com/uvg/bienvenida/MainActivity.kt
+@@ -6,6 +6,8 @@
+ import androidx.activity.enableEdgeToEdge
+ import androidx.activity.compose.BackHandler
+ import androidx.compose.foundation.layout.*
++import androidx.compose.foundation.rememberScrollState
++import androidx.compose.foundation.verticalScroll
+ import androidx.compose.material.icons.Icons
+ import androidx.compose.material.icons.filled.ArrowBack
+ import androidx.compose.material.icons.filled.DateRange
+@@ -17,6 +19,7 @@
+ import androidx.compose.ui.unit.dp
+ import com.uvg.bienvenida.ui.lecciones.*
+ import com.uvg.bienvenida.ui.theme.HandsonTheme
++import com.uvg.bienvenida.ui.camara.CameraScreen
+ 
+ class MainActivity : ComponentActivity() {
+     override fun onCreate(savedInstanceState: Bundle?) {
+@@ -38,9 +41,11 @@
+     var tab by rememberSaveable { mutableStateOf("lecciones") }
+     var detalle by rememberSaveable { mutableStateOf(false) }
+     var videoId by rememberSaveable { mutableStateOf<String?>(null) }
++    var camaraAbierta by rememberSaveable { mutableStateOf(false) }
+     val video = listaVideosPrueba.firstOrNull { it.id == videoId }
+     BackHandler(enabled = true) {
+         when {
++            camaraAbierta -> camaraAbierta = false
+             tab != "lecciones" -> tab = "lecciones"
+             videoId != null -> videoId = null
+             detalle -> detalle = false
+@@ -51,22 +56,28 @@
+         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+         bottomBar = {
+             NavigationBar {
+-                NavigationBarItem(selected = tab == "lecciones", onClick = { tab = "lecciones" },
++                NavigationBarItem(selected = tab == "lecciones", onClick = { camaraAbierta = false; tab = "lecciones" },
+                     icon = { Icon(Icons.Default.List, null) }, label = { Text("Lecciones") })
+-                NavigationBarItem(selected = tab == "reto", onClick = { tab = "reto" },
++                NavigationBarItem(selected = tab == "reto", onClick = { camaraAbierta = false; tab = "reto" },
+                     icon = { Icon(Icons.Default.DateRange, null) }, label = { Text("Desafío") })
+             }
+         }
+     ) { padding ->
+         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+             when {
++                camaraAbierta && video != null -> CameraScreen(
++                    tituloLeccion = video.titulo,
++                    onBack = { camaraAbierta = false }
++                    // Conectar aquí onFrame cuando esté disponible el analizador.
++                )
+                 tab == "reto" -> RetoDiarioScreen()
+                 video != null -> Scaffold(topBar = {
+                     TopAppBar(title = { Text(video.titulo) }, navigationIcon = {
+                         IconButton(onClick = { videoId = null }) { Icon(Icons.Default.ArrowBack, "Volver") }
+                     })
+                 }) { inner ->
+-                    Column(Modifier.fillMaxSize().padding(inner).padding(20.dp),
++                    Column(Modifier.fillMaxSize().padding(inner)
++                        .verticalScroll(rememberScrollState()).padding(20.dp),
+                         verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                         if (video.videoResId != null) {
+                             VideoDelReto(video.videoResId, onReady = {})
+@@ -74,6 +85,10 @@
+                             Text("Video pendiente", style = MaterialTheme.typography.titleLarge)
+                             Text("Todavía no se ha agregado el video de esta lección.")
+                         }
++                        Button(
++                            onClick = { camaraAbierta = true },
++                            modifier = Modifier.fillMaxWidth()
++                        ) { Text("Practicar con cámara") }
+                     }
+                 }
+                 detalle -> VideosScreen(onBackClick = { detalle = false }, onVideoSelect = { videoId = it.id })
+@@ -81,4 +96,4 @@
+             }
+         }
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraFrame.kt b/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraFrame.kt
+new file mode 100644
+--- /dev/null
++++ b/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraFrame.kt
+@@ -0,0 +1,23 @@
++package com.uvg.bienvenida.ui.camara
++
++import android.graphics.Bitmap
++
++/**
++ * Contrato de entrega para el futuro analizador de señas.
++ *
++ * [bitmap] contiene todos los píxeles, sin girar ni reflejar. [rotationDegrees]
++ * indica el giro horario necesario para orientarlos. La vista frontal se ve
++ * como espejo, pero los píxeles entregados al analizador NO están reflejados.
++ * [timestampMillis] es monotónico desde el arranque, no una fecha de calendario.
++ *
++ * El callback se ejecuta de forma SÍNCRONA en un hilo de cámara. El bitmap se
++ * recicla al regresar: no guardarlo ni pasarlo directamente a detectAsync.
++ * Si el modelo necesita conservarlo, hacer una copia y liberar esa copia
++ * al terminar. No actualizar Views desde este hilo.
++ */
++data class CameraFrame(
++    val bitmap: Bitmap,
++    val rotationDegrees: Int,
++    val timestampMillis: Long,
++    val isFrontCamera: Boolean
++)
+diff --git a/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraPreview.kt b/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraPreview.kt
+new file mode 100644
+--- /dev/null
++++ b/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraPreview.kt
+@@ -0,0 +1,173 @@
++package com.uvg.bienvenida.ui.camara
++
++import android.hardware.display.DisplayManager
++import android.os.Handler
++import android.os.Looper
++import android.os.SystemClock
++import android.util.Log
++import android.util.Size
++import android.view.Surface
++import androidx.camera.core.CameraSelector
++import androidx.camera.core.CameraState
++import androidx.camera.core.ImageAnalysis
++import androidx.camera.core.Preview
++import androidx.camera.core.resolutionselector.AspectRatioStrategy
++import androidx.camera.core.resolutionselector.ResolutionSelector
++import androidx.camera.core.resolutionselector.ResolutionStrategy
++import androidx.camera.lifecycle.ProcessCameraProvider
++import androidx.camera.view.PreviewView
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.DisposableEffect
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.rememberUpdatedState
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.viewinterop.AndroidView
++import androidx.core.content.ContextCompat
++import androidx.lifecycle.LiveData
++import androidx.lifecycle.Observer
++import androidx.lifecycle.compose.LocalLifecycleOwner
++import java.util.concurrent.Executors
++import java.util.concurrent.atomic.AtomicBoolean
++
++/** Solo se monta cuando hay permiso y la pantalla está visible. */
++@Composable
++internal fun CameraPreview(
++    requestedLens: Int,
++    modifier: Modifier = Modifier,
++    onFrame: ((CameraFrame) -> Unit)?,
++    onCameraInfo: (actualLens: Int, canSwitch: Boolean) -> Unit,
++    onStreaming: (Boolean) -> Unit,
++    onError: (String) -> Unit
++) {
++    val context = LocalContext.current
++    val lifecycleOwner = LocalLifecycleOwner.current
++    val frameCallback = rememberUpdatedState(onFrame)
++    val infoCallback = rememberUpdatedState(onCameraInfo)
++    val streamingCallback = rememberUpdatedState(onStreaming)
++    val errorCallback = rememberUpdatedState(onError)
++    val previewView = remember(context) {
++        PreviewView(context).apply {
++            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
++            // Muestra la imagen completa; evita recortar dedos en el encuadre.
++            scaleType = PreviewView.ScaleType.FIT_CENTER
++        }
++    }
++
++    AndroidView(factory = { previewView }, modifier = modifier)
++
++    DisposableEffect(previewView, lifecycleOwner, requestedLens) {
++        val active = AtomicBoolean(true)
++        val mainExecutor = ContextCompat.getMainExecutor(context)
++        val executor = Executors.newSingleThreadExecutor()
++        val resolution = ResolutionSelector.Builder()
++            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
++            .setResolutionStrategy(
++                ResolutionStrategy(Size(640, 480), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)
++            ).build()
++        val rotation = previewView.display?.rotation ?: Surface.ROTATION_0
++        val preview = Preview.Builder().setTargetRotation(rotation).build()
++        val analysis = ImageAnalysis.Builder()
++            .setResolutionSelector(resolution)
++            .setTargetRotation(rotation)
++            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
++            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
++            .build()
++        var provider: ProcessCameraProvider? = null
++        var cameraState: LiveData<CameraState>? = null
++        val cameraObserver = Observer<CameraState> { state ->
++            if (active.get() && state.error != null) {
++                errorCallback.value("No se puede usar la cámara. Cierra otras apps que la estén usando y reintenta.")
++            }
++        }
++        val streamObserver = Observer<PreviewView.StreamState> { state ->
++            if (active.get()) streamingCallback.value(state == PreviewView.StreamState.STREAMING)
++        }
++        previewView.previewStreamState.observe(lifecycleOwner, streamObserver)
++
++        // También cubre giros de 180° que no recrean la actividad.
++        val displayManager = context.getSystemService(DisplayManager::class.java)
++        val displayListener = object : DisplayManager.DisplayListener {
++            override fun onDisplayAdded(displayId: Int) = Unit
++            override fun onDisplayRemoved(displayId: Int) = Unit
++            override fun onDisplayChanged(displayId: Int) {
++                val display = previewView.display ?: return
++                if (active.get() && display.displayId == displayId) {
++                    preview.targetRotation = display.rotation
++                    analysis.targetRotation = display.rotation
++                }
++            }
++        }
++        displayManager.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
++
++        val future = ProcessCameraProvider.getInstance(context)
++        future.addListener({
++            if (active.get()) {
++                try {
++                    val currentProvider = future.get()
++                    provider = currentProvider
++                    val front = currentProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
++                    val back = currentProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)
++                    check(front || back) { "No hay cámaras disponibles" }
++                    val actualLens = when {
++                        requestedLens == CameraSelector.LENS_FACING_FRONT && front -> CameraSelector.LENS_FACING_FRONT
++                        requestedLens == CameraSelector.LENS_FACING_BACK && back -> CameraSelector.LENS_FACING_BACK
++                        front -> CameraSelector.LENS_FACING_FRONT
++                        else -> CameraSelector.LENS_FACING_BACK
++                    }
++                    val selector = CameraSelector.Builder().requireLensFacing(actualLens).build()
++                    infoCallback.value(actualLens, front && back)
++                    preview.setSurfaceProvider(previewView.surfaceProvider)
++                    var lastFrameTime = -1L
++                    analysis.setAnalyzer(executor) { image ->
++                        try {
++                            val callback = frameCallback.value
++                            val now = SystemClock.elapsedRealtime()
++                            // Hasta 10 entregas/s; si el modelo tarda más, CameraX descarta imágenes viejas.
++                            if (active.get() && callback != null &&
++                                (lastFrameTime < 0 || now - lastFrameTime >= 100)
++                            ) {
++                                lastFrameTime = now
++                                val bitmap = image.toBitmap()
++                                try {
++                                    callback(CameraFrame(bitmap, image.imageInfo.rotationDegrees,
++                                        now, actualLens == CameraSelector.LENS_FACING_FRONT))
++                                } finally {
++                                    bitmap.recycle()
++                                }
++                            }
++                        } catch (error: Exception) {
++                            Log.e("HandsOnCamera", "Error en el consumidor de imágenes", error)
++                            mainExecutor.execute {
++                                if (active.get()) errorCallback.value("No se pudo procesar la imagen. Reintenta la cámara.")
++                            }
++                        } finally {
++                            // Indispensable incluso si falla el futuro analizador.
++                            image.close()
++                        }
++                    }
++                    val camera = currentProvider.bindToLifecycle(lifecycleOwner, selector, preview, analysis)
++                    cameraState = camera.cameraInfo.cameraState
++                    cameraState?.observe(lifecycleOwner, cameraObserver)
++                } catch (error: Exception) {
++                    Log.e("HandsOnCamera", "No se pudo iniciar la cámara", error)
++                    if (active.get()) errorCallback.value(
++                        "No se pudo abrir la cámara. Comprueba el permiso y que tu dispositivo tenga una cámara disponible."
++                    )
++                }
++            }
++        }, mainExecutor)
++
++        onDispose {
++            // El proveedor es compartido: no cancelar su Future ni usar unbindAll().
++            active.set(false)
++            displayManager.unregisterDisplayListener(displayListener)
++            previewView.previewStreamState.removeObserver(streamObserver)
++            cameraState?.removeObserver(cameraObserver)
++            analysis.clearAnalyzer()
++            provider?.unbind(preview, analysis)
++            preview.setSurfaceProvider(null)
++            executor.shutdown()
++        }
++    }
++}
+diff --git a/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraScreen.kt b/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraScreen.kt
+new file mode 100644
+--- /dev/null
++++ b/app/src/main/java/com/uvg/bienvenida/ui/camara/CameraScreen.kt
+@@ -0,0 +1,154 @@
++package com.uvg.bienvenida.ui.camara
++
++import android.Manifest
++import android.content.Intent
++import android.content.pm.PackageManager
++import android.net.Uri
++import android.provider.Settings
++import androidx.activity.compose.rememberLauncherForActivityResult
++import androidx.activity.result.contract.ActivityResultContracts
++import androidx.camera.core.CameraSelector
++import androidx.compose.foundation.background
++import androidx.compose.foundation.layout.*
++import androidx.compose.foundation.rememberScrollState
++import androidx.compose.foundation.shape.RoundedCornerShape
++import androidx.compose.foundation.verticalScroll
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.ArrowBack
++import androidx.compose.material3.*
++import androidx.compose.runtime.*
++import androidx.compose.runtime.saveable.rememberSaveable
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.draw.clip
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.platform.LocalContext
++import androidx.compose.ui.unit.dp
++import androidx.core.content.ContextCompat
++import androidx.lifecycle.Lifecycle
++import androidx.lifecycle.LifecycleEventObserver
++import androidx.lifecycle.compose.LocalLifecycleOwner
++
++@OptIn(ExperimentalMaterial3Api::class)
++@Composable
++fun CameraScreen(
++    tituloLeccion: String,
++    onBack: () -> Unit,
++    onFrame: ((CameraFrame) -> Unit)? = null
++) {
++    val context = LocalContext.current
++    val lifecycleOwner = LocalLifecycleOwner.current
++    fun hasPermission() = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
++        PackageManager.PERMISSION_GRANTED
++    var granted by remember { mutableStateOf(hasPermission()) }
++    var denied by rememberSaveable { mutableStateOf(false) }
++    var visible by remember {
++        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
++    }
++    var requestedLens by rememberSaveable { mutableIntStateOf(CameraSelector.LENS_FACING_FRONT) }
++    var actualLens by remember { mutableIntStateOf(requestedLens) }
++    var canSwitch by remember { mutableStateOf(false) }
++    var streaming by remember { mutableStateOf(false) }
++    var error by remember { mutableStateOf<String?>(null) }
++    var attempt by remember { mutableIntStateOf(0) }
++    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
++        granted = it
++        denied = !it
++        error = null
++    }
++
++    DisposableEffect(lifecycleOwner) {
++        val observer = LifecycleEventObserver { _, event ->
++            when (event) {
++                Lifecycle.Event.ON_START -> visible = true
++                Lifecycle.Event.ON_RESUME -> {
++                    // Actualiza también al regresar de Configuración o de un permiso temporal.
++                    granted = hasPermission()
++                    error = null
++                }
++                Lifecycle.Event.ON_STOP -> { visible = false; streaming = false }
++                else -> Unit
++            }
++        }
++        lifecycleOwner.lifecycle.addObserver(observer)
++        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
++    }
++
++    Scaffold(topBar = {
++        TopAppBar(title = { Text("Practicar seña") }, navigationIcon = {
++            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Volver a la lección") }
++        })
++    }) { padding ->
++        Column(
++            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(20.dp),
++            verticalArrangement = Arrangement.spacedBy(16.dp)
++        ) {
++            Text(tituloLeccion, style = MaterialTheme.typography.titleLarge)
++            Text("Coloca tus manos dentro de la imagen, con buena iluminación.")
++            when {
++                !granted -> {
++                    Card(Modifier.fillMaxWidth()) {
++                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
++                            Text(if (denied) "El permiso de cámara no está habilitado." else "Activa la cámara para practicar.")
++                            Text("La cámara permite ver tus señas mientras practicas.")
++                            Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
++                                Text("Permitir cámara")
++                            }
++                            if (denied) {
++                                Text("Si Android ya no muestra la solicitud, habilita Cámara en los permisos de la app.")
++                                TextButton(onClick = {
++                                    try {
++                                        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
++                                            Uri.parse("package:${context.packageName}")))
++                                    } catch (_: android.content.ActivityNotFoundException) {
++                                        error = "Abre Configuración del teléfono y habilita el permiso de Cámara para HandsOn."
++                                    }
++                                }) { Text("Abrir configuración") }
++                                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
++                            }
++                        }
++                    }
++                }
++                error != null -> {
++                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
++                    Button(onClick = {
++                        granted = hasPermission()
++                        streaming = false
++                        canSwitch = false
++                        error = null
++                        attempt++
++                    }) { Text("Reintentar cámara") }
++                }
++                visible -> {
++                    key(attempt, requestedLens) {
++                        CameraPreview(
++                            requestedLens = requestedLens,
++                            modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f)
++                                .clip(RoundedCornerShape(20.dp)).background(Color.Black),
++                            onFrame = onFrame,
++                            onCameraInfo = { lens, switch -> actualLens = lens; canSwitch = switch },
++                            onStreaming = { streaming = it },
++                            onError = { streaming = false; error = it }
++                        )
++                    }
++                    Text(if (streaming) "Cámara lista" else "Abriendo cámara…")
++                    Text(if (actualLens == CameraSelector.LENS_FACING_FRONT)
++                        "Cámara frontal · vista en espejo" else "Cámara trasera")
++                    OutlinedButton(enabled = canSwitch, onClick = {
++                        streaming = false
++                        canSwitch = false
++                        requestedLens = if (actualLens == CameraSelector.LENS_FACING_FRONT)
++                            CameraSelector.LENS_FACING_BACK else CameraSelector.LENS_FACING_FRONT
++                    }) { Text("Cambiar cámara") }
++                }
++                else -> Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
++                    Text("Cámara pausada")
++                }
++            }
++            Text("El reconocimiento de señas todavía no está conectado.",
++                style = MaterialTheme.typography.bodyMedium)
++            Text("Las imágenes se usan en memoria: esta pantalla no guarda fotos ni graba videos.",
++                style = MaterialTheme.typography.bodySmall)
++        }
++    }
++}
+diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
+--- a/gradle/libs.versions.toml
++++ b/gradle/libs.versions.toml
+@@ -9,6 +9,7 @@
+ kotlin = "2.2.10"
+ composeBom = "2026.02.01"
+ coil = "2.7.0"
++camerax = "1.6.2"
+ 
+ [libraries]
+ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+@@ -27,6 +28,11 @@
+ androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+ androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
+ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
++androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
++androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
++androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
++androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
++androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycleRuntimeKtx" }
+ 
+ [plugins]
+ android-application = { id = "com.android.application", version.ref = "agp" }
