@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.mediapipe.tasks.vision)
     implementation(libs.tensorflow.lite)
+    implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.16.1")
     implementation(libs.coil.compose)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.5")
     testImplementation(libs.junit)
