@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "779273985220",
+    "project_id": "handson-49422",
+    "storage_bucket": "handson-49422.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:779273985220:android:6a6fab3f8893fdce03fd91",
+        "android_client_info": {
+          "package_name": "com.uvg.bienvenida"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDX1bPs75u1hbuGW0VGO1UNGmQ9ZSeVPx0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
